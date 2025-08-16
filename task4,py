@@ -1,0 +1,82 @@
+import pandas as pd
+import seaborn as sns  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
+import warnings
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix
+)
+from sklearn.exceptions import ConvergenceWarning
+
+# Suppress convergence warnings
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+# ✅ Step 1: Load and clean dataset
+df = pd.read_csv(r'C:\Users\Amina Hussain\Downloads\spam.csv', encoding='latin-1')
+df = df[['v1', 'v2']]
+df.columns = ['label', 'message']
+
+# ✅ Step 2: Encode labels (ham = 0, spam = 1)
+label_encoder = LabelEncoder()
+df['label_num'] = label_encoder.fit_transform(df['label'])
+
+# ✅ Step 3: Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    df['message'], df['label_num'], test_size=0.2, random_state=42
+)
+
+# ✅ Step 4: TF-IDF vectorization
+vectorizer = TfidfVectorizer(stop_words='english', max_df=0.7)
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+# ✅ Step 5: Evaluation function
+def evaluate_model(y_true, y_pred, model_name):
+    print(f"\n--- {model_name} Evaluation ---")
+    print("Accuracy :", round(accuracy_score(y_true, y_pred), 4))
+    print("Precision:", round(precision_score(y_true, y_pred), 4))
+    print("Recall   :", round(recall_score(y_true, y_pred), 4))
+    print("F1 Score :", round(f1_score(y_true, y_pred), 4))
+    print("Confusion Matrix:\n", confusion_matrix(y_true, y_pred))
+
+# ✅ Step 6: Confusion matrix plot
+def plot_confusion_matrix(y_true, y_pred, title):
+    cm = confusion_matrix(y_true, y_pred)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=['Ham', 'Spam'],
+                yticklabels=['Ham', 'Spam'])
+    plt.title(f"{title} - Confusion Matrix")
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.tight_layout()
+    plt.show(block=False)  # Do not block further code
+    plt.pause(3)           # Show for 3 seconds
+    plt.close()            # Close after viewing
+
+# ✅ Step 7: Train & evaluate Naive Bayes
+nb = MultinomialNB()
+nb.fit(X_train_vec, y_train)
+y_pred_nb = nb.predict(X_test_vec)
+
+evaluate_model(y_test, y_pred_nb, "Naive Bayes")
+plot_confusion_matrix(y_test, y_pred_nb, "Naive Bayes")
+
+# ✅ Step 8: Train & evaluate SVM
+svm = LinearSVC()
+svm.fit(X_train_vec, y_train)
+y_pred_svm = svm.predict(X_test_vec)
+
+evaluate_model(y_test, y_pred_svm, "SVM")
+plot_confusion_matrix(y_test, y_pred_svm, "SVM")
+
+plt.pause(3)  # Keeps the last plot for 3 seconds
+plt.close('all')
